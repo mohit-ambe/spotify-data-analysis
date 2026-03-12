@@ -3,9 +3,20 @@ import sqlite3
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+DB_FILENAME = "music.sqlite"
+CURRENT_USER_ID = ""
+
 
 def extract_recently_played(api):
     return api.current_user_recently_played()
+
+
+def extract_users_playlist(api):
+    return api.current_user_playlists()
+
+
+def extract_playlist_items(api, playlist_id, offset=0):
+    return api.playlist_items(playlist_id=playlist_id, offset=offset)
 
 
 def transform_recently_played(content):
@@ -21,6 +32,50 @@ def transform_recently_played(content):
         a_art = transform_album_artists(album)
         art_a = transform_artists(album)
         yield t, t_art, art_t, t_e, a, a_art, art_a
+
+
+def transform_users_playlist(content):
+    for i in range(len(content['items'])):
+        playlist = content['items'][i]
+        if playlist['owner']['id'] != CURRENT_USER_ID:
+            continue
+        tp = transform_playlist(playlist)
+        yield tp
+
+
+def transform_playlist_items(content, playlist_id, offset=0):
+    for i in range(len(content['items'])):
+        item = content['items'][i]
+        track = item['item']
+        if track is None or not track['is_playable'] or not track['track']:
+            continue
+        album = track['album']
+        t = transform_track(track)
+        t_art = transform_track_artists(track)
+        art_t = transform_artists(track)
+        p_t = transform_playlist_track(track, playlist_id, offset + i)
+        a = transform_album(album)
+        a_art = transform_album_artists(album)
+        art_a = transform_artists(album)
+        yield t, t_art, art_t, p_t, a, a_art, art_a
+
+
+def transform_playlist_track(track, playlist_id, playlist_order):
+    data = dict()
+    data['playlist_id'] = playlist_id
+    data['playlist_order'] = playlist_order
+    data['track_id'] = track['id']
+    return data
+
+
+def transform_playlist(playlist):
+    data = dict()
+    data['playlist_id'] = playlist['id']
+    data['name'] = playlist['name']
+    data['tracks'] = playlist['items']['total']
+    data['playlist_url'] = playlist['external_urls']['spotify']
+    data['image_url'] = playlist['images'][0]['url']
+    return data
 
 
 def transform_artists(object):
@@ -88,7 +143,7 @@ def transform_track_events(item):
     return data
 
 
-def load(table, data, db="music.sqlite"):
+def load(table, data, db=DB_FILENAME):
     schema = str(tuple(data.keys()))
     values = str(tuple(data.values()))
     try:
@@ -114,6 +169,38 @@ def recently_played(api):
             load("AlbumArtists", album_artist)
         for artist in art_a:
             load("Artists", artist)
+    print("Loaded - Recently Played")
+
+
+def users_playlists(api):
+    content = extract_users_playlist(api)
+    playlists = []
+    for tp in transform_users_playlist(content):
+        load("Playlists", tp)
+        playlists.append(tp['playlist_id'])
+    print(f"Loaded - {CURRENT_USER_ID}'s Playlists")
+    return playlists
+
+
+def playlist_items(api, playlist_id, offset=0):
+    content = extract_playlist_items(api, playlist_id, offset=offset)
+    for t, t_art, art_t, p_t, a, a_art, art_a in transform_playlist_items(content, playlist_id, offset=offset):
+        load("Tracks", t)
+        for track_artist in t_art:
+            load("TrackArtists", track_artist)
+        for artist in art_t:
+            load("Artists", artist)
+        load("PlaylistTracks", p_t)
+        load("Albums", a)
+        for album_artist in a_art:
+            load("AlbumArtists", album_artist)
+        for artist in art_a:
+            load("Artists", artist)
+    if offset + 50 < content['total']:
+        print(f"Loaded - Batch {1 + offset // 50}")
+        playlist_items(api, playlist_id, offset=offset + 50)
+    else:
+        print(f"Completed - {content['total']} (potential) items")
 
 
 if __name__ == '__main__':
@@ -121,3 +208,8 @@ if __name__ == '__main__':
         ALL_SCOPES = " ".join([scope.strip() for scope in scopes.readlines()])
 
     api = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=ALL_SCOPES, open_browser=True, cache_path=".spotify_cache"))
+    CURRENT_USER_ID = api.current_user()['id']
+
+    playlist_ids = users_playlists(api)
+    for pid in playlist_ids:
+        playlist_items(api, pid)
