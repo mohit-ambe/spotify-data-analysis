@@ -209,7 +209,3 @@ if __name__ == '__main__':
 
     api = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=ALL_SCOPES, open_browser=True, cache_path=".spotify_cache"))
     CURRENT_USER_ID = api.current_user()['id']
-
-    playlist_ids = users_playlists(api)
-    for pid in playlist_ids:
-        playlist_items(api, pid)
