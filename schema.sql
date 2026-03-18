@@ -57,6 +57,14 @@ CREATE TABLE TrackEvents
     FOREIGN KEY (track_id) REFERENCES Tracks (id)
 );
 
+CREATE TABLE TrackQueries
+(
+    track_id VARCHAR(255) PRIMARY KEY,
+    isrc     VARCHAR(255),
+    query    VARCHAR(255),
+    FOREIGN KEY (track_id) REFERENCES Tracks (id)
+);
+
 CREATE TABLE Playlists
 (
     playlist_id  VARCHAR(255) PRIMARY KEY,

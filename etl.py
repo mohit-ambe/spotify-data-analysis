@@ -19,6 +19,10 @@ def extract_playlist_items(api, playlist_id, offset=0):
     return api.playlist_items(playlist_id=playlist_id, offset=offset)
 
 
+def extract_track(api, track_id):
+    return api.track(track_id=track_id, market="US")
+
+
 def transform_recently_played(content):
     for i in range(len(content['items'])):
         item = content['items'][i]
@@ -31,7 +35,11 @@ def transform_recently_played(content):
         a = transform_album(album)
         a_art = transform_album_artists(album)
         art_a = transform_artists(album)
-        yield t, t_art, art_t, t_e, a, a_art, art_a
+
+        track_content = extract_track(api, track['id'])
+        t_q = transform_track_query(track_content)
+
+        yield t, t_art, art_t, t_e, t_q, a, a_art, art_a
 
 
 def transform_users_playlist(content):
@@ -65,6 +73,14 @@ def transform_playlist_track(track, playlist_id, playlist_order):
     data['playlist_id'] = playlist_id
     data['playlist_order'] = playlist_order
     data['track_id'] = track['id']
+    return data
+
+
+def transform_track_query(track_content):
+    data = dict()
+    data['track_id'] = track_content['id']
+    data['isrc'] = track_content['external_ids']['isrc']
+    data['query'] = track_content['name'] + " - " + track_content['artists'][0]['name']
     return data
 
 
@@ -157,13 +173,14 @@ def load(table, data, db=DB_FILENAME):
 
 def recently_played(api):
     content = extract_recently_played(api)
-    for t, t_art, art_t, t_e, a, a_art, art_a in transform_recently_played(content):
+    for t, t_art, art_t, t_e, t_q, a, a_art, art_a in transform_recently_played(content):
         load("Tracks", t)
         for track_artist in t_art:
             load("TrackArtists", track_artist)
         for artist in art_t:
             load("Artists", artist)
         load("TrackEvents", t_e)
+        load("TrackQueries", t_q)
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
