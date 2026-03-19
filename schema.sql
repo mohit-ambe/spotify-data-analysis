@@ -9,8 +9,8 @@ CREATE TABLE Albums
 (
     id           VARCHAR(255) PRIMARY KEY,
     name         VARCHAR(255),
-    album_type   VARCHAR(50),
-    release_date VARCHAR(20),
+    album_type   VARCHAR(255),
+    release_date VARCHAR(255),
     total_tracks INT,
     image_url    VARCHAR(255),
     album_url    VARCHAR(255)
@@ -80,4 +80,46 @@ CREATE TABLE PlaylistTracks
     playlist_order INT,
     track_id       VARCHAR(255),
     PRIMARY KEY (playlist_id, playlist_order)
+);
+
+CREATE TABLE TrackFeatures
+(
+    track_id         VARCHAR(255) PRIMARY KEY,
+
+    key              INT,
+    note             VARCHAR(255),
+    mode             VARCHAR(255),
+    camelot          VARCHAR(255),
+    score            REAL,
+    bpm              REAL,
+
+    danceability     REAL,
+    energy           REAL,
+    acousticness     REAL,
+    instrumentalness REAL,
+    valence          REAL,
+
+    dance_floor      REAL,
+    happy            REAL,
+    sad              REAL,
+    chill            REAL,
+    aggressive       REAL,
+    hype             REAL,
+    groove           REAL,
+
+    warmup           REAL,
+    peak_time        REAL,
+    blendability     REAL,
+    vocal_risk       REAL,
+
+    FOREIGN KEY (track_id) REFERENCES Tracks (id)
+);
+
+CREATE TABLE TrackGenres
+(
+    track_id    VARCHAR(255),
+    genre       VARCHAR(255),
+    genre_order INT,
+    PRIMARY KEY (track_id, genre),
+    FOREIGN KEY (track_id) REFERENCES Tracks (id)
 );

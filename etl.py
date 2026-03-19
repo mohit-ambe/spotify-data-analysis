@@ -1,7 +1,12 @@
+import os
 import sqlite3
+import time
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+
+import dl
+import tf
 
 DB_FILENAME = "music.sqlite"
 CURRENT_USER_ID = ""
@@ -23,6 +28,22 @@ def extract_track(api, track_id):
     return api.track(track_id=track_id, market="US")
 
 
+def extract_track_features(isrc, query):
+    url = dl.download_track(isrc, query)
+    if not url:
+        return
+    print(f"Downloaded: {query}")
+    filename = f"track_downloads/{url[url.index('=') + 1:]}.mp3"
+    content = tf.track_features(filename)
+    print(f"Features: {query}")
+    try:
+        os.remove(filename)
+        print(f"Removed: {query}")
+    except Exception:
+        pass
+    return content
+
+
 def transform_recently_played(content):
     for i in range(len(content['items'])):
         item = content['items'][i]
@@ -39,8 +60,11 @@ def transform_recently_played(content):
 
         track_content = extract_track(api, track['id'])
         t_q = transform_track_query(track_content)
+        track_features_content = extract_track_features(t_q['isrc'], t_q['query'])
+        t_f = transform_track_features(track['id'], track_features_content)
+        t_g = transform_track_genres(track['id'], track_features_content)
 
-        yield t, t_art, art_t, t_e, t_q, a, a_art, art_a
+        yield t, t_art, art_t, t_e, t_q, t_f, t_g, a, a_art, art_a
 
 
 def transform_users_playlist(content):
@@ -70,8 +94,11 @@ def transform_playlist_items(content, playlist_id, offset=0):
 
         track_content = extract_track(api, track['id'])
         t_q = transform_track_query(track_content)
+        track_features = extract_track_features(t_q['isrc'], t_q['query'])
+        t_f = transform_track_features(track['id'], track_features)
+        t_g = transform_track_genres(track['id'], track_features)
 
-        yield t, t_art, art_t, p_t, t_q, a, a_art, art_a
+        yield t, t_art, art_t, p_t, t_q, t_f, t_g, a, a_art, art_a
 
 
 def transform_playlist_track(track, playlist_id, playlist_order):
@@ -88,6 +115,25 @@ def transform_track_query(track_content):
     data['isrc'] = track_content['external_ids']['isrc']
     data['query'] = track_content['name'] + " - " + track_content['artists'][0]['name']
     return data
+
+
+def transform_track_features(track_id, track_features_content):
+    data = dict()
+    data['track_id'] = track_id
+    for k, v in track_features_content.items():
+        if k == 'genres':
+            continue
+        data[k] = v
+    return data
+
+
+def transform_track_genres(track_id, track_features_content):
+    for i, genre in enumerate(track_features_content['genres']):
+        data = dict()
+        data['track_id'] = track_id
+        data['genre'] = genre
+        data['genre_order'] = i
+        yield data
 
 
 def transform_playlist(playlist):
@@ -179,19 +225,30 @@ def load(table, data, db=DB_FILENAME):
 
 def recently_played(api):
     content = extract_recently_played(api)
-    for t, t_art, art_t, t_e, t_q, a, a_art, art_a in transform_recently_played(content):
+    TIME = time.time()
+    for i, track in enumerate(transform_recently_played(content)):
+        t, t_art, art_t, t_e, t_q, t_f, t_g, a, a_art, art_a = track
         load("Tracks", t)
         for track_artist in t_art:
             load("TrackArtists", track_artist)
         for artist in art_t:
             load("Artists", artist)
         load("TrackEvents", t_e)
+
         load("TrackQueries", t_q)
+        load("TrackFeatures", t_f)
+        for genre in t_g:
+            load("TrackGenres", genre)
+
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
         for artist in art_a:
             load("Artists", artist)
+
+        print(f"Track {i + 1} - Loaded ({round(time.time() - TIME, 3)}s)")
+        TIME = time.time()
+
     print("Loaded - Recently Played")
 
 
@@ -207,19 +264,31 @@ def users_playlists(api):
 
 def playlist_items(api, playlist_id, offset=0):
     content = extract_playlist_items(api, playlist_id, offset=offset)
-    for t, t_art, art_t, p_t, t_q, a, a_art, art_a in transform_playlist_items(content, playlist_id, offset=offset):
+    TIME = time.time()
+    for i, track in enumerate(transform_playlist_items(content, playlist_id, offset=offset)):
+        t, t_art, art_t, p_t, t_q, t_f, t_g, a, a_art, art_a = track
+
         load("Tracks", t)
         for track_artist in t_art:
             load("TrackArtists", track_artist)
         for artist in art_t:
             load("Artists", artist)
         load("PlaylistTracks", p_t)
+
         load("TrackQueries", t_q)
+        load("TrackFeatures", t_f)
+        for genre in t_g:
+            load("TrackGenres", genre)
+
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
         for artist in art_a:
             load("Artists", artist)
+
+        print(f"Track {i + offset + 1} - Loaded ({round(time.time() - TIME, 3)}s)")
+        TIME = time.time()
+
     if offset + 50 < content['total']:
         print(f"Loaded - Batch {1 + offset // 50}")
         playlist_items(api, playlist_id, offset=offset + 50)
