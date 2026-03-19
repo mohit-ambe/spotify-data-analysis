@@ -28,6 +28,7 @@ def transform_recently_played(content):
         item = content['items'][i]
         track = content['items'][i]['track']
         album = track['album']
+
         t = transform_track(track)
         t_art = transform_track_artists(track)
         art_t = transform_artists(track)
@@ -58,6 +59,7 @@ def transform_playlist_items(content, playlist_id, offset=0):
         if track is None or not track['is_playable'] or not track['track']:
             continue
         album = track['album']
+
         t = transform_track(track)
         t_art = transform_track_artists(track)
         art_t = transform_artists(track)
@@ -65,7 +67,11 @@ def transform_playlist_items(content, playlist_id, offset=0):
         a = transform_album(album)
         a_art = transform_album_artists(album)
         art_a = transform_artists(album)
-        yield t, t_art, art_t, p_t, a, a_art, art_a
+
+        track_content = extract_track(api, track['id'])
+        t_q = transform_track_query(track_content)
+
+        yield t, t_art, art_t, p_t, t_q, a, a_art, art_a
 
 
 def transform_playlist_track(track, playlist_id, playlist_order):
@@ -201,13 +207,14 @@ def users_playlists(api):
 
 def playlist_items(api, playlist_id, offset=0):
     content = extract_playlist_items(api, playlist_id, offset=offset)
-    for t, t_art, art_t, p_t, a, a_art, art_a in transform_playlist_items(content, playlist_id, offset=offset):
+    for t, t_art, art_t, p_t, t_q, a, a_art, art_a in transform_playlist_items(content, playlist_id, offset=offset):
         load("Tracks", t)
         for track_artist in t_art:
             load("TrackArtists", track_artist)
         for artist in art_t:
             load("Artists", artist)
         load("PlaylistTracks", p_t)
+        load("TrackQueries", t_q)
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
