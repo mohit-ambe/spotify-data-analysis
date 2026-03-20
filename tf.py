@@ -101,10 +101,11 @@ def identity_reg(embeddings, graph_filename, output_node="model/Identity"):
 
 def normalize_note_name(note):
     enharmonic = {
-        "A#": "Bb",
-        "D#": "Eb",
-        "G#": "Ab",
-        "C#": "Db",
+        "Bb": "A#",
+        "Eb": "D#",
+        "Ab": "G#",
+        "Db": "C#",
+        "Gb": "F#",
     }
     return enharmonic.get(note, note)
 
