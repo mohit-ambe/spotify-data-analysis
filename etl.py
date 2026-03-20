@@ -31,7 +31,7 @@ def extract_track(api, track_id):
 def extract_track_features(isrc, query):
     url = dl.download_track(isrc, query)
     if not url:
-        return
+        return dict()
     print(f"Downloaded: {query}")
     filename = f"track_downloads/{url[url.index('=') + 1:]}.mp3"
     content = tf.track_features(filename)
@@ -94,9 +94,9 @@ def transform_playlist_items(content, playlist_id, offset=0):
 
         track_content = extract_track(api, track['id'])
         t_q = transform_track_query(track_content)
-        track_features = extract_track_features(t_q['isrc'], t_q['query'])
-        t_f = transform_track_features(track['id'], track_features)
-        t_g = transform_track_genres(track['id'], track_features)
+        track_features_content = extract_track_features(t_q['isrc'], t_q['query'])
+        t_f = transform_track_features(track['id'], track_features_content)
+        t_g = transform_track_genres(track['id'], track_features_content)
 
         yield t, t_art, art_t, p_t, t_q, t_f, t_g, a, a_art, art_a
 
