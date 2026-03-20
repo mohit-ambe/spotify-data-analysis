@@ -35,7 +35,6 @@ def download_track(isrc, query):
         entries = info.get("entries", [])
         if not entries:
             return ""
-        print(entries[0])
         title = entries[0].get("title", "").lower()
         desc = entries[0].get("description", "").lower()
         if song in title or artist in title or song in desc or artist in desc:
@@ -46,7 +45,6 @@ def download_track(isrc, query):
                     if not error_code:
                         return url
             except Exception:
-                print("Exception found")
                 return ""
 
         return ""
