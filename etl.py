@@ -4,8 +4,6 @@ import time
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-import songdata_tf
-
 DB_FILENAME = "music.sqlite"
 CURRENT_USER_ID = ""
 
@@ -26,10 +24,6 @@ def extract_track(api, track_id):
     return api.track(track_id=track_id, market="US")
 
 
-def extract_track_features(track_id):
-    return songdata_tf.track_features([track_id])
-
-
 def transform_recently_played(content):
     for i in range(len(content['items'])):
         item = content['items'][i]
@@ -44,10 +38,7 @@ def transform_recently_played(content):
         a_art = transform_album_artists(album)
         art_a = transform_artists(album)
 
-        track_features_content = extract_track_features(track['id'])
-        t_f = transform_track_features(track['id'], track_features_content)
-
-        yield t, t_art, art_t, t_e, t_f, a, a_art, art_a
+        yield t, t_art, art_t, t_e, a, a_art, art_a
 
 
 def transform_users_playlist(content):
@@ -75,10 +66,7 @@ def transform_playlist_items(content, playlist_id, offset=0):
         a_art = transform_album_artists(album)
         art_a = transform_artists(album)
 
-        track_features_content = extract_track_features(track['id'])
-        t_f = transform_track_features(track['id'], track_features_content)
-
-        yield t, t_art, art_t, p_t, t_f, a, a_art, art_a
+        yield t, t_art, art_t, p_t, a, a_art, art_a
 
 
 def transform_playlist_track(track, playlist_id, playlist_order):
@@ -207,7 +195,7 @@ def recently_played(api):
     content = extract_recently_played(api)
     TIME = time.time()
     for i, track in enumerate(transform_recently_played(content)):
-        t, t_art, art_t, t_e, t_f, a, a_art, art_a = track
+        t, t_art, art_t, t_e, a, a_art, art_a = track
         load("Tracks", t)
         for track_artist in t_art:
             load("TrackArtists", track_artist)
@@ -215,19 +203,13 @@ def recently_played(api):
             load("Artists", artist)
         load("TrackEvents", t_e)
 
-        load("TrackFeatures", t_f)
-
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
         for artist in art_a:
             load("Artists", artist)
 
-        print(t['name'])
-        print(f"Track {i + 1} - Loaded ({round(time.time() - TIME, 3)}s)")
-        TIME = time.time()
-
-    print("Loaded - Recently Played")
+    print(f"Loaded - Recently Played ({round(time.time() - TIME, 3)}s)")
 
 
 def users_playlists(api):
@@ -235,16 +217,16 @@ def users_playlists(api):
     playlists = []
     for tp in transform_users_playlist(content):
         load("Playlists", tp)
-        playlists.append(tp['playlist_id'])
+        playlists.append((tp['playlist_id'], tp['name']))
     print(f"Loaded - {CURRENT_USER_ID}'s Playlists")
     return playlists
 
 
-def playlist_items(api, playlist_id, offset=0):
+def playlist_items(api, playlist_id, playlist_name, offset=0):
     content = extract_playlist_items(api, playlist_id, offset=offset)
     TIME = time.time()
     for i, track in enumerate(transform_playlist_items(content, playlist_id, offset=offset)):
-        t, t_art, art_t, p_t, t_f, a, a_art, art_a = track
+        t, t_art, art_t, p_t, a, a_art, art_a = track
 
         load("Tracks", t)
         for track_artist in t_art:
@@ -253,22 +235,18 @@ def playlist_items(api, playlist_id, offset=0):
             load("Artists", artist)
         load("PlaylistTracks", p_t)
 
-        load("TrackFeatures", t_f)
-
         load("Albums", a)
         for album_artist in a_art:
             load("AlbumArtists", album_artist)
         for artist in art_a:
             load("Artists", artist)
 
-        print(f"Track {i + offset + 1} - Loaded ({round(time.time() - TIME, 3)}s)")
-        TIME = time.time()
-
+    runtime = f"({round(time.time() - TIME, 3)}s)"
     if offset + 50 < content['total']:
-        print(f"Loaded - Batch {1 + offset // 50}")
-        playlist_items(api, playlist_id, offset=offset + 50)
+        print(f"Loaded - Batch {1 + offset // 50} {runtime}")
+        playlist_items(api, playlist_id, playlist_name, offset=offset + 50)
     else:
-        print(f"Completed - {content['total']} (potential) items")
+        print(f"{playlist_name} Completed - {content['total']} (potential) items {runtime})")
 
 
 if __name__ == '__main__':
@@ -277,3 +255,8 @@ if __name__ == '__main__':
 
     api = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=ALL_SCOPES, open_browser=True, cache_path=".spotify_cache"))
     CURRENT_USER_ID = api.current_user()['id']
+
+    recently_played(api)
+    playlist_ids = users_playlists(api)
+    for pid, pname in playlist_ids:
+        playlist_items(api, pid, pname)

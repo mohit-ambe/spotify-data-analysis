@@ -36,6 +36,7 @@ def track_features(track_id):
         driver.get(f"https://songdata.io/track/{track_id}")
         html = driver.page_source
 
+        # wait for data to load
         while ALBUM_ART_CLASS not in html:
             driver.refresh()
             time.sleep(1)
@@ -44,9 +45,11 @@ def track_features(track_id):
         lines = list(map(str.strip, html.split("\n")))
         for i, line in enumerate(lines):
             if STYLE_HTML in line or re.match(FEATURE_TAG_HTML, line):
+                # <dt> tags enclose features - use this marker to extract
+                # also perform special formatting for key (note and mode)
                 if parse(line).lower() == 'key':
                     value = parse(lines[i + 1]).split(" ")
-                    data['key'] = value[0].replace("♭", "b")
+                    data['key'] = value[0].replace("♭", "b").replace("♯", "#")
                     data['mode'] = value[1].lower()
                 else:
                     data[parse(line).lower()] = parse(lines[i + 1])
