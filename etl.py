@@ -1,8 +1,12 @@
+import multiprocessing
+import os
 import sqlite3
 import time
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+
+import songdata_tf
 
 DB_FILENAME = "music.sqlite"
 CURRENT_USER_ID = ""
@@ -22,6 +26,22 @@ def extract_playlist_items(api, playlist_id, offset=0):
 
 def extract_track(api, track_id):
     return api.track(track_id=track_id, market="US")
+
+
+def extract_track_features(track_ids, workers=os.cpu_count()):
+    bsize = max(4, len(track_ids) // workers)
+    track_ids_batched = [track_ids[i:i + bsize] for i in range(0, len(track_ids), bsize)]
+
+    with multiprocessing.Pool(processes=workers) as pool:
+        batches = pool.map(songdata_tf.track_features, track_ids_batched)
+
+    if batches:
+        result = []
+        for batch in batches:
+            result.extend(batch)
+        return result
+    else:
+        return [dict() for _ in range(len(track_ids))]
 
 
 def transform_recently_played(content):
@@ -85,22 +105,15 @@ def transform_track_query(track_content):
     return data
 
 
-def transform_track_features(track_id, track_features_content):
-    data = dict()
-    data['track_id'] = track_id
-    for k, v in track_features_content.items():
-        if k == 'genres':
-            continue
-        data[k] = v
-    return data
-
-
-def transform_track_genres(track_id, track_features_content):
-    for i, genre in enumerate(track_features_content['genres']):
+def transform_track_features(track_features_content):
+    for item in track_features_content:
         data = dict()
-        data['track_id'] = track_id
-        data['genre'] = genre
-        data['genre_order'] = i
+        for k, v in item.items():
+            if k == 'key':
+                v = v.replace("♭", "b").replace("♯", "#")
+            if k == 'mode':
+                v = v.lower()
+            data[k.lower()] = v
         yield data
 
 
@@ -191,9 +204,25 @@ def load(table, data, db=DB_FILENAME):
         pass
 
 
+def read_new_tracks(db=DB_FILENAME):
+    try:
+        with sqlite3.connect(db) as connection:
+            cursor = connection.cursor()
+            query = f'''SELECT * FROM Tracks T
+                        LEFT OUTER JOIN TrackFeatures TF
+                        on T.id = TF.track_id
+                        WHERE TF.track_id IS NULL'''
+            cursor.execute(query)
+            return [row[0] for row in cursor]
+    except:
+        pass
+    return []
+
+
 def recently_played(api):
-    content = extract_recently_played(api)
     TIME = time.time()
+
+    content = extract_recently_played(api)
     for i, track in enumerate(transform_recently_played(content)):
         t, t_art, art_t, t_e, a, a_art, art_a = track
         load("Tracks", t)
@@ -223,8 +252,9 @@ def users_playlists(api):
 
 
 def playlist_items(api, playlist_id, playlist_name, offset=0):
-    content = extract_playlist_items(api, playlist_id, offset=offset)
     TIME = time.time()
+
+    content = extract_playlist_items(api, playlist_id, offset=offset)
     for i, track in enumerate(transform_playlist_items(content, playlist_id, offset=offset)):
         t, t_art, art_t, p_t, a, a_art, art_a = track
 
@@ -246,7 +276,21 @@ def playlist_items(api, playlist_id, playlist_name, offset=0):
         print(f"Loaded - Batch {1 + offset // 50} {runtime}")
         playlist_items(api, playlist_id, playlist_name, offset=offset + 50)
     else:
-        print(f"{playlist_name} Completed - {content['total']} (potential) items {runtime})")
+        print(f"{playlist_name} Completed <= {content['total']} items {runtime}")
+
+
+def track_features(offset=0, limit=None, workers=os.cpu_count()):
+    TIME = time.time()
+
+    track_ids = read_new_tracks()
+    limit = limit if limit is not None else len(track_ids)
+    content = extract_track_features(track_ids[offset:offset + limit], workers)
+
+    for t_f in transform_track_features(content):
+        load("TrackFeatures", t_f)
+
+    runtime = f"({round(time.time() - TIME, 3)}s)"
+    print(f"Completed <= {limit} items {runtime}")
 
 
 if __name__ == '__main__':
@@ -260,3 +304,4 @@ if __name__ == '__main__':
     playlist_ids = users_playlists(api)
     for pid, pname in playlist_ids:
         playlist_items(api, pid, pname)
+    track_features()
