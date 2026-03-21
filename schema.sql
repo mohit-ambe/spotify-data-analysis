@@ -86,6 +86,28 @@ CREATE TABLE TrackFeatures
 (
     track_id         VARCHAR(255) PRIMARY KEY,
 
+    bpm              INT,
+    key              INT,
+    mode             VARCHAR(255),
+    camelot          VARCHAR(255),
+
+    popularity       INT,
+    loudness         INT,
+    acousticness     INT,
+    danceability     INT,
+    energy           INT,
+    instrumentalness INT,
+    liveness         INT,
+    speechiness      INT,
+    valence          INT,
+
+    FOREIGN KEY (track_id) REFERENCES Tracks (id)
+);
+
+CREATE TABLE TrackFeaturesExtended
+(
+    track_id         VARCHAR(255) PRIMARY KEY,
+
     key              INT,
     note             VARCHAR(255),
     mode             VARCHAR(255),
