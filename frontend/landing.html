@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Analysis Hub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="landing">
+  <div class="landing-shell">
+    <div class="page-switcher panel-block">
+      <div class="playlist-chip-row">
+        <a class="playlist-chip active" href="/">Home</a>
+        <a class="playlist-chip" href="/clustering">Clustering</a>
+        <a class="playlist-chip" href="/playlist">Playlist</a>
+      </div>
+    </div>
+
+    <section class="landing-hero panel-block">
+      <p class="eyebrow">Spotify Analysis Hub</p>
+      <h1>Turn your Spotify history into a visual intelligence layer for discovery.</h1>
+      <p class="lede">
+        Import your current library, map it into structured feature space, and generate polished playlist experiences
+        from the same underlying signal. Built for fast exploration, clean clustering, and smarter music curation.
+      </p>
+      <div class="landing-hero-metrics">
+        <div class="landing-metric">
+          <strong>3D Clustering</strong>
+          <span>Explore songs by energy, valence, danceability, and more.</span>
+        </div>
+        <div class="landing-metric">
+          <strong>Similarity Playlists</strong>
+          <span>Generate mood-driven playlists from seed choices and vector search.</span>
+        </div>
+        <div class="landing-metric">
+          <strong>Live Import Flow</strong>
+          <span>Pull fresh Spotify data directly into the local analysis pipeline.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-card landing-card-wide panel-block">
+      <h2>Import Current Music</h2>
+      <p class="hint">Start a fresh import to update the SQLite database, regenerate clustering outputs, and refresh the playlist dataset.</p>
+      <div class="playlist-chip-row">
+        <button id="landingImportButton" class="landing-import-button" type="button">Import From Spotify</button>
+      </div>
+      <p id="landingImportStatus" class="hint">Opens Spotify auth, pulls current data. This may take a while.</p>
+      <div id="landingImportLog" class="playlist-debug-log hidden"></div>
+    </section>
+  </div>
+
+  <script>
+    const importButton = document.getElementById("landingImportButton");
+    const importStatus = document.getElementById("landingImportStatus");
+    const importLog = document.getElementById("landingImportLog");
+    let importPollTimer = null;
+
+    function renderImportLog(lines) {
+      if (!lines || !lines.length) {
+        importLog.classList.add("hidden");
+        importLog.innerHTML = "";
+        return;
+      }
+
+      importLog.classList.remove("hidden");
+      importLog.innerHTML = lines
+        .map((line) => `<div>${line.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</div>`)
+        .join("");
+    }
+
+    async function pollImportJob(jobId) {
+      try {
+        const response = await fetch(`/api/import_music/status?job_id=${encodeURIComponent(jobId)}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Unable to read import status.");
+        }
+
+        renderImportLog(payload.logs || []);
+
+        if (payload.status === "completed") {
+          importStatus.textContent = "Imported current Spotify data.";
+          importButton.disabled = false;
+          importButton.textContent = "Import From Spotify";
+          importPollTimer = null;
+          return;
+        }
+
+        if (payload.status === "failed") {
+          importStatus.textContent = payload.error || "Import failed.";
+          importButton.disabled = false;
+          importButton.textContent = "Import From Spotify";
+          importPollTimer = null;
+          return;
+        }
+
+        importStatus.textContent = "Importing current Spotify data...";
+        importPollTimer = window.setTimeout(() => pollImportJob(jobId), 800);
+      } catch (error) {
+        importStatus.textContent = error.message || "Unable to read import status.";
+        importButton.disabled = false;
+        importButton.textContent = "Import From Spotify";
+        importPollTimer = null;
+      }
+    }
+
+    importButton.addEventListener("click", async () => {
+      if (importPollTimer) {
+        window.clearTimeout(importPollTimer);
+        importPollTimer = null;
+      }
+      importButton.disabled = true;
+      importButton.textContent = "Importing...";
+      importStatus.textContent = "Starting import job...";
+      renderImportLog(["[import] starting server-side import..."]);
+
+      try {
+        const response = await fetch("/api/import_music", { method: "POST" });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Import failed.");
+        }
+        importStatus.textContent = payload.message || "Started import.";
+        pollImportJob(payload.job_id);
+      } catch (error) {
+        importStatus.textContent = error.message || "Import failed.";
+        importButton.disabled = false;
+        importButton.textContent = "Import From Spotify";
+      }
+    });
+  </script>
+</body>
+</html>

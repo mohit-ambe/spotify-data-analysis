@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Cluster Viewer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="clustering">
+  <div class="app-shell">
+    <aside class="control-panel">
+      <div class="panel-block page-switcher">
+        <div class="playlist-chip-row">
+          <a class="playlist-chip" href="/">Home</a>
+          <a id="tabClustering" class="playlist-chip active" href="/clustering">Clustering</a>
+          <a id="tabPlaylist" class="playlist-chip" href="/playlist">Playlist</a>
+        </div>
+      </div>
+
+      <div class="panel-block hero">
+        <p class="eyebrow">Spotify Clusters</p>
+        <h1>3D Song Map</h1>
+        <p class="lede">
+          Pick a clustering method, tune its parameters, then drag the scene to orbit around your songs.
+        </p>
+      </div>
+
+      <div class="panel-block grid clustering-tab">
+        <label>
+          <span>Clustering Method</span>
+          <select id="clusterMethod">
+            <option value="agglomerative">Agglomerative</option>
+            <option value="kmeans">KMeans</option>
+            <option value="birch">Birch</option>
+            <option value="gmm">Gaussian Mixture</option>
+            <option value="dbscan">DBSCAN</option>
+          </select>
+        </label>
+        <label id="clusterKControl">
+          <span>Clusters: <strong id="clusterKValue">2</strong></span>
+          <input id="clusterK" type="range" min="2" max="8" step="1" value="2">
+        </label>
+        <label id="clusterEpsControl" class="hidden">
+          <span>DBSCAN Epsilon: <strong id="clusterEpsValue">0.7</strong></span>
+          <input id="clusterEps" type="range" min="0" max="6" step="1" value="0">
+        </label>
+        <label id="clusterMinSamplesControl" class="hidden">
+          <span>DBSCAN Min Samples: <strong id="clusterMinSamplesValue">4</strong></span>
+          <input id="clusterMinSamples" type="range" min="0" max="3" step="1" value="0">
+        </label>
+        <p class="hint">The viewer loads the matching assignment file from the local <code>clustering/</code> folder.</p>
+      </div>
+
+      <div class="panel-block grid clustering-tab">
+        <label>
+          <span>X Axis</span>
+          <select id="xAxis"></select>
+        </label>
+        <label>
+          <span>Y Axis</span>
+          <select id="yAxis"></select>
+        </label>
+        <label>
+          <span>Z Axis</span>
+          <select id="zAxis"></select>
+        </label>
+      </div>
+
+      <div class="panel-block grid clustering-tab">
+        <label>
+          <span>Cluster Focus</span>
+          <select id="clusterFilter"></select>
+        </label>
+      </div>
+
+      <div class="panel-block stats clustering-tab">
+        <div>
+          <strong id="songCount">0</strong>
+          <span>Songs</span>
+        </div>
+        <div>
+          <strong id="clusterCount">0</strong>
+          <span>Clusters</span>
+        </div>
+        <div>
+          <strong id="featureCount">0</strong>
+          <span>Numeric Features</span>
+        </div>
+      </div>
+
+      <div class="panel-block clustering-tab">
+        <h2>Cluster Explorer</h2>
+        <div id="clusterDetail" class="cluster-detail">
+          <p class="hint">Choose a cluster to isolate it, inspect its songs, and navigate its local territory.</p>
+        </div>
+      </div>
+
+      <div class="panel-block clustering-tab">
+        <h2>How To Explore</h2>
+        <p class="hint">Drag to rotate, mouse wheel to zoom further in, click a legend item to focus a cluster, and click a point to pin its details.</p>
+      </div>
+    </aside>
+
+    <main class="viewer-panel">
+      <canvas id="clusterCanvas"></canvas>
+      <div class="legend-dock clustering-tab">
+        <div class="panel-title-row">
+          <h2>Cluster Legend</h2>
+          <button id="resetCamera" type="button">Reset View</button>
+        </div>
+        <div id="legend" class="legend"></div>
+      </div>
+      <button id="clearSongFocus" class="clear-song-focus hidden" type="button">X</button>
+      <div id="emptyState" class="empty-state">
+        <p>Choose a clustering method to build the 3D view.</p>
+      </div>
+      <div id="tooltip" class="tooltip hidden"></div>
+      <div id="detailCard" class="detail-card hidden"></div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

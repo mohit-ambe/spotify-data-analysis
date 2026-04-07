@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playlist Generator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="playlist">
+  <div class="playlist-page-shell">
+    <div class="page-switcher panel-block">
+      <div class="playlist-chip-row">
+        <a class="playlist-chip" href="/">Home</a>
+        <a id="tabClustering" class="playlist-chip" href="/clustering">Clustering</a>
+        <a id="tabPlaylist" class="playlist-chip active" href="/playlist">Playlist</a>
+      </div>
+    </div>
+
+    <header class="playlist-page-header panel-block">
+      <div class="playlist-page-copy">
+        <p class="eyebrow">Spotify Playlists</p>
+        <h1>Guided Playlist Builder</h1>
+        <p class="lede">Choose a mood, pick five seed songs, then generate a full playlist using similarity-search.</p>
+      </div>
+    </header>
+
+    <main class="playlist-page-main">
+      <section class="playlist-page-panel">
+        <div class="playlist-upload-block">
+          <p class="hint">This page automatically loads <code>clustering/all_tracks.csv</code> from the server.</p>
+        </div>
+        <div id="playlistMenu" class="playlist-menu playlist-menu-page"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
