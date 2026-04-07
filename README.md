@@ -1,6 +1,7 @@
 # Spotify Data Analysis
 
-A local Spotify analysis app for importing Spotify listening data, clustering tracks in feature space, and generating mood-based playlists from similarity search.
+A local Spotify analysis app for importing Spotify listening data, clustering tracks in feature space, and generating
+mood-based playlists from similarity search.
 
 ## Features
 
@@ -20,13 +21,13 @@ A local Spotify analysis app for importing Spotify listening data, clustering tr
   Landing page, clustering page, playlist page, shared styles, and browser logic.
 - `etl/`
   Refactored ETL package split into:
-  - `api.py`
-  - `extracts.py`
-  - `transforms.py`
-  - `loads.py`
-  - `reads.py`
-  - `stages.py`
-  - `main.py`
+    - `api.py`
+    - `extracts.py`
+    - `transforms.py`
+    - `loads.py`
+    - `reads.py`
+    - `stages.py`
+    - `main.py`
 - `etl.py`
   Original legacy ETL script kept in the repo unchanged.
 - `clustering.py`
@@ -44,43 +45,16 @@ A local Spotify analysis app for importing Spotify listening data, clustering tr
 
 - Python
 - SQLite
-- Spotipy / Spotify OAuth
-- pandas
-- NumPy
+- Spotipy
+- pandas / numpy
 - scikit-learn
 - FAISS
 - Selenium
-- HTML, CSS, and vanilla JavaScript
-- Python `ThreadingHTTPServer`
-
-## Download / Run Locally
-
-### Option 1: Clone with Git
-
-```powershell
-git clone <your-repo-url>
-cd spotify-data-analysis
-```
-
-### Option 2: Download ZIP
-
-1. Download the repository as a ZIP.
-2. Extract it somewhere local.
-3. Open the folder in your editor or terminal.
-
-## Install Dependencies
-
-Create a virtual environment and install the project dependencies:
-
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
 
 ## Requirements
 
-The main Python dependencies are listed in [requirements.txt](C:\Users\mohit\PycharmProjects\spotify-data-analysis\requirements.txt):
+The main Python dependencies are listed
+in [requirements.txt](C:\Users\mohit\PycharmProjects\spotify-data-analysis\requirements.txt):
 
 - `numpy`
 - `pandas`
@@ -105,10 +79,6 @@ Before running imports:
 ```powershell
 py server.py
 ```
-
-Then open:
-
-- `http://127.0.0.1:8080/`
 
 ### 2. Import music
 
@@ -144,11 +114,4 @@ Go to `/playlist` and:
 - choose a playlist length
 - generate the final playlist
 
-The playlist page reads track data from `clustering/all_tracks.csv` and uses the backend similarity API for continuation songs.
-
-## Notes
-
-- Restart the server after backend code changes.
-- If playlist generation is missing album art after a schema change, the similarity metadata may need to rebuild automatically on the next request.
-- If the playlist page has no songs, import music first so `clustering/all_tracks.csv` exists and is current.
-- The original `etl.py` script is still present, but the current server import flow uses the refactored `etl/main.py` entry point.
+The playlist page reads track data from `clustering/all_tracks.csv`

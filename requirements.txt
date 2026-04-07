@@ -1,6 +1,6 @@
-faiss-cpu
 numpy
 pandas
 scikit-learn
-selenium
+faiss-cpu
 spotipy
+selenium
