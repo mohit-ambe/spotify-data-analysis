@@ -208,15 +208,46 @@ def read_new_tracks(db=DB_FILENAME):
     try:
         with sqlite3.connect(db) as connection:
             cursor = connection.cursor()
-            query = f'''SELECT * FROM Tracks T
-                        LEFT OUTER JOIN TrackFeatures TF
-                        on T.id = TF.track_id
-                        WHERE TF.track_id IS NULL'''
+            query = f'''SELECT T.id
+                        FROM Tracks T
+                                LEFT OUTER JOIN TrackFeatures TF
+                                                 on T.id = TF.track_id
+                        WHERE TF.track_id IS NULL
+                        UNION
+                        SELECT T.id
+                        FROM TrackFeatures TF
+                                 LEFT JOIN main.Tracks T
+                                    on T.id = TF.track_id
+                        WHERE TF.popularity IS NULL
+                           OR TF.loudness IS NULL
+                           OR TF.acousticness IS NULL
+                           OR TF.danceability IS NULL
+                           OR TF.energy IS NULL
+                           OR TF.instrumentalness IS NULL
+                           OR TF.liveness IS NULL
+                           OR TF.speechiness IS NULL
+                           OR TF.valence IS NULL'''
             cursor.execute(query)
             return [row[0] for row in cursor]
     except:
         pass
     return []
+
+
+def read_new_playlists(db=DB_FILENAME):
+    try:
+        with sqlite3.connect(db) as connection:
+            cursor = connection.cursor()
+            query = f'''SELECT P.playlist_id
+                        FROM Playlists P
+                                 LEFT JOIN main.PlaylistTracks PT
+                                    on P.playlist_id = PT.playlist_id
+                        WHERE PT.playlist_order IS NOT NULL'''
+            cursor.execute(query)
+            return {row[0] for row in cursor}
+    except:
+        pass
+    return set()
 
 
 def recently_played(api):
@@ -290,10 +321,11 @@ def track_features(offset=0, limit=None, workers=os.cpu_count()):
         load("TrackFeatures", t_f)
 
     runtime = f"({round(time.time() - TIME, 3)}s)"
-    print(f"Completed <= {limit} items {runtime}")
+    print(f"Loaded Track Features - <= {limit} items {runtime}")
 
 
-if __name__ == '__main__':
+def main():
+    global CURRENT_USER_ID
     with open("scopes.txt", 'r') as scopes:
         ALL_SCOPES = " ".join([scope.strip() for scope in scopes.readlines()])
 
@@ -302,6 +334,13 @@ if __name__ == '__main__':
 
     recently_played(api)
     playlist_ids = users_playlists(api)
+    seen = read_new_playlists()
     for pid, pname in playlist_ids:
+        if pid in seen:
+            continue
         playlist_items(api, pid, pname)
     track_features()
+
+
+if __name__ == '__main__':
+    main()
