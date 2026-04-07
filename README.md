@@ -3,6 +3,8 @@
 A local Spotify analysis app for importing Spotify listening data, clustering tracks in feature space, and generating
 mood-based playlists from similarity search.
 
+![clustering.png](clustering.png)
+
 ## Features
 
 - Import current Spotify data into `music.sqlite` from the landing page.
